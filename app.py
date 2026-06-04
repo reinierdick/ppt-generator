@@ -134,6 +134,13 @@ def create_ppt():
 
     base_url = request.host_url.rstrip("/")
 
+    if base_url.startswith("http://"):
+        base_url = base_url.replace(
+            "http://",
+            "https://",
+            1
+        )
+
     return {
         "success": True,
         "filename": filename,
