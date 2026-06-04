@@ -1,5 +1,6 @@
 from flask import Flask, request, send_file
 from pptx import Presentation
+from pptx.util import Inches
 import tempfile
 import os
 import zipfile
@@ -11,12 +12,14 @@ UPLOAD_DIR = "uploads"
 
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+
 @app.route("/")
 def home():
     return """
     <h1>Portfolio Upload</h1>
     <a href="/upload">Upload ZIP</a>
     """
+
 
 @app.route("/upload")
 def upload_page():
@@ -28,6 +31,7 @@ def upload_page():
         <input type="submit" value="Upload">
     </form>
     """
+
 
 @app.route("/upload_zip", methods=["POST"])
 def upload_zip():
@@ -71,6 +75,35 @@ def upload_zip():
         "image_count": image_count
     }
 
+
+@app.route("/portfolio/<portfolio_id>")
+def portfolio_info(portfolio_id):
+
+    portfolio_folder = os.path.join(
+        UPLOAD_DIR,
+        portfolio_id
+    )
+
+    if not os.path.exists(portfolio_folder):
+        return {"error": "portfolio not found"}, 404
+
+    files = []
+
+    for root, dirs, filenames in os.walk(portfolio_folder):
+        for f in filenames:
+            files.append(
+                os.path.relpath(
+                    os.path.join(root, f),
+                    portfolio_folder
+                )
+            )
+
+    return {
+        "portfolio_id": portfolio_id,
+        "files": files
+    }
+
+
 @app.route("/create_ppt", methods=["POST"])
 def create_ppt():
 
@@ -107,6 +140,97 @@ def create_ppt():
         "download_url": f"{base_url}/download/{filename}"
     }
 
+
+@app.route("/create_portfolio_ppt/<portfolio_id>")
+def create_portfolio_ppt(portfolio_id):
+
+    portfolio_folder = os.path.join(
+        UPLOAD_DIR,
+        portfolio_id
+    )
+
+    if not os.path.exists(portfolio_folder):
+        return {"error": "portfolio not found"}, 404
+
+    prs = Presentation()
+
+    image_extensions = (
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".webp"
+    )
+
+    images = []
+
+    for file in os.listdir(portfolio_folder):
+
+        if file.lower().endswith(
+            image_extensions
+        ):
+            images.append(
+                os.path.join(
+                    portfolio_folder,
+                    file
+                )
+            )
+
+    images.sort()
+
+    title_slide = prs.slides.add_slide(
+        prs.slide_layouts[0]
+    )
+
+    title_slide.shapes.title.text = (
+        f"Portfolio {portfolio_id}"
+    )
+
+    title_slide.placeholders[1].text = (
+        f"{len(images)} foto's"
+    )
+
+    for image_path in images:
+
+        slide = prs.slides.add_slide(
+            prs.slide_layouts[5]
+        )
+
+        try:
+            slide.shapes.title.text = (
+                os.path.basename(image_path)
+            )
+        except:
+            pass
+
+        slide.shapes.add_picture(
+            image_path,
+            Inches(0.5),
+            Inches(1),
+            width=Inches(8)
+        )
+
+    tmp = tempfile.NamedTemporaryFile(
+        delete=False,
+        suffix=".pptx"
+    )
+
+    prs.save(tmp.name)
+
+    filename = os.path.basename(
+        tmp.name
+    )
+
+    base_url = request.host_url.rstrip("/")
+
+    return {
+        "success": True,
+        "portfolio_id": portfolio_id,
+        "image_count": len(images),
+        "download_url":
+            f"{base_url}/download/{filename}"
+    }
+
+
 @app.route("/download/<filename>")
 def download_file(filename):
 
@@ -121,32 +245,7 @@ def download_file(filename):
         download_name=filename,
         mimetype="application/vnd.openxmlformats-officedocument.presentationml.presentation"
     )
-@app.route("/portfolio/<portfolio_id>")
-def portfolio_info(portfolio_id):
 
-    portfolio_folder = os.path.join(
-        UPLOAD_DIR,
-        portfolio_id
-    )
 
-    if not os.path.exists(portfolio_folder):
-        return {"error": "portfolio not found"}, 404
-
-    files = []
-
-    for root, dirs, filenames in os.walk(portfolio_folder):
-        for f in filenames:
-            files.append(
-                os.path.relpath(
-                    os.path.join(root, f),
-                    portfolio_folder
-                )
-            )
-
-    return {
-        "portfolio_id": portfolio_id,
-        "files": files
-    }
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
-
