@@ -1,4 +1,4 @@
-from flask import Flask, request, send_file
+from flask import Flask, request
 from pptx import Presentation
 import tempfile
 
@@ -34,12 +34,10 @@ def create_ppt():
 
     prs.save(tmp.name)
 
-    return send_file(
-        tmp.name,
-        as_attachment=True,
-        download_name="presentation.pptx",
-        mimetype="application/vnd.openxmlformats-officedocument.presentationml.presentation"
-    )
+    return {
+        "success": True,
+        "filename": tmp.name
+    }
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
