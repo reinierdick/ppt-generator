@@ -1,4 +1,3 @@
-```python
 from flask import Flask, request, send_file
 from pptx import Presentation
 import tempfile
@@ -38,10 +37,12 @@ def create_ppt():
 
     filename = os.path.basename(tmp.name)
 
+    base_url = request.host_url.rstrip("/")
+
     return {
         "success": True,
         "filename": filename,
-        "download_url": f"https://web-production-4163.up.railway.app/download/{filename}"
+        "download_url": f"{base_url}/download/{filename}"
     }
 
 @app.route("/download/<filename>")
@@ -61,4 +62,3 @@ def download_file(filename):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
-```
