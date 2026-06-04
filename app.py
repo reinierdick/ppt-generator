@@ -121,7 +121,32 @@ def download_file(filename):
         download_name=filename,
         mimetype="application/vnd.openxmlformats-officedocument.presentationml.presentation"
     )
+@app.route("/portfolio/<portfolio_id>")
+def portfolio_info(portfolio_id):
 
+    portfolio_folder = os.path.join(
+        UPLOAD_DIR,
+        portfolio_id
+    )
+
+    if not os.path.exists(portfolio_folder):
+        return {"error": "portfolio not found"}, 404
+
+    files = []
+
+    for root, dirs, filenames in os.walk(portfolio_folder):
+        for f in filenames:
+            files.append(
+                os.path.relpath(
+                    os.path.join(root, f),
+                    portfolio_folder
+                )
+            )
+
+    return {
+        "portfolio_id": portfolio_id,
+        "files": files
+    }
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
 
