@@ -5,6 +5,7 @@ import tempfile
 import os
 import zipfile
 import uuid
+import json
 
 app = Flask(__name__)
 
@@ -304,5 +305,71 @@ def serve_image(portfolio_id, filename):
         return {"error": "image not found"}, 404
 
     return send_file(filepath)
+@app.route("/portfolio/<portfolio_id>/manifest")
+def get_manifest(portfolio_id):
+
+    manifest_path = os.path.join(
+        UPLOAD_DIR,
+        portfolio_id,
+        "manifest.json"
+    )
+
+    if not os.path.exists(manifest_path):
+        return {
+            "portfolio_id": portfolio_id,
+            "analyses": []
+        }
+
+    with open(manifest_path, "r") as f:
+        return json.load(f)
+
+
+@app.route(
+    "/portfolio/<portfolio_id>/analysis",
+    methods=["POST"]
+)
+def save_analysis(portfolio_id):
+
+    portfolio_folder = os.path.join(
+        UPLOAD_DIR,
+        portfolio_id
+    )
+
+    if not os.path.exists(portfolio_folder):
+        return {"error": "portfolio not found"}, 404
+
+    data = request.json
+
+    manifest_path = os.path.join(
+        portfolio_folder,
+        "manifest.json"
+    )
+
+    if os.path.exists(manifest_path):
+
+        with open(manifest_path, "r") as f:
+            manifest = json.load(f)
+
+    else:
+
+        manifest = {
+            "portfolio_id": portfolio_id,
+            "analyses": []
+        }
+
+    manifest["analyses"].append(data)
+
+    with open(manifest_path, "w") as f:
+        json.dump(
+            manifest,
+            f,
+            indent=2
+        )
+
+    return {
+        "success": True,
+        "analysis_count":
+            len(manifest["analyses"])
+    }
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
