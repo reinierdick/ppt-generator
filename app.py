@@ -246,6 +246,56 @@ def download_file(filename):
         mimetype="application/vnd.openxmlformats-officedocument.presentationml.presentation"
     )
 
+@app.route("/portfolio/<portfolio_id>/images")
+def portfolio_images(portfolio_id):
 
+    portfolio_folder = os.path.join(
+        UPLOAD_DIR,
+        portfolio_id
+    )
+
+    if not os.path.exists(portfolio_folder):
+        return {"error": "portfolio not found"}, 404
+
+    image_extensions = (
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".webp"
+    )
+
+    base_url = request.host_url.rstrip("/")
+
+    images = []
+
+    for file in os.listdir(portfolio_folder):
+
+        if file.lower().endswith(image_extensions):
+
+            images.append({
+                "filename": file,
+                "url": f"{base_url}/image/{portfolio_id}/{file}"
+            })
+
+    return {
+        "portfolio_id": portfolio_id,
+        "image_count": len(images),
+        "images": images
+    }
+
+
+@app.route("/image/<portfolio_id>/<filename>")
+def serve_image(portfolio_id, filename):
+
+    filepath = os.path.join(
+        UPLOAD_DIR,
+        portfolio_id,
+        filename
+    )
+
+    if not os.path.exists(filepath):
+        return {"error": "image not found"}, 404
+
+    return send_file(filepath)
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
