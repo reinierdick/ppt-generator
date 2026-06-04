@@ -160,61 +160,89 @@ def create_portfolio_ppt(portfolio_id):
     if not os.path.exists(portfolio_folder):
         return {"error": "portfolio not found"}, 404
 
-    prs = Presentation()
-
-    image_extensions = (
-        ".jpg",
-        ".jpeg",
-        ".png",
-        ".webp"
+    manifest_path = os.path.join(
+        portfolio_folder,
+        "manifest.json"
     )
 
-    images = []
+    if os.path.exists(manifest_path):
 
-    for file in os.listdir(portfolio_folder):
+        with open(manifest_path, "r") as f:
+            manifest = json.load(f)
 
-        if file.lower().endswith(
-            image_extensions
-        ):
-            images.append(
-                os.path.join(
-                    portfolio_folder,
-                    file
-                )
-            )
+        analyses = manifest.get(
+            "analyses",
+            []
+        )
 
-    images.sort()
+    else:
+        analyses = []
+
+    prs = Presentation()
 
     title_slide = prs.slides.add_slide(
         prs.slide_layouts[0]
     )
 
     title_slide.shapes.title.text = (
-        f"Portfolio {portfolio_id}"
+        f"Botanical Portfolio"
     )
 
     title_slide.placeholders[1].text = (
-        f"{len(images)} foto's"
+        f"{portfolio_id}"
     )
 
-    for image_path in images:
+    for analysis in analyses:
+
+        filename = analysis.get(
+            "filename",
+            ""
+        )
+
+        image_path = os.path.join(
+            portfolio_folder,
+            filename
+        )
 
         slide = prs.slides.add_slide(
             prs.slide_layouts[5]
         )
 
+        if os.path.exists(image_path):
+
+            slide.shapes.add_picture(
+                image_path,
+                Inches(0.3),
+                Inches(0.8),
+                width=Inches(4.5)
+            )
+
+        title = slide.shapes.title
+
         try:
-            slide.shapes.title.text = (
-                os.path.basename(image_path)
+            title.text = analysis.get(
+                "scientific_name",
+                "Unknown species"
             )
         except:
             pass
 
-        slide.shapes.add_picture(
-            image_path,
-            Inches(0.5),
-            Inches(1),
-            width=Inches(8)
+        textbox = slide.shapes.add_textbox(
+            Inches(5.0),
+            Inches(1.0),
+            Inches(4),
+            Inches(3)
+        )
+
+        frame = textbox.text_frame
+
+        frame.text = (
+            f"Common name: "
+            f"{analysis.get('common_name','')}\n"
+            f"Confidence: "
+            f"{analysis.get('confidence','')}%\n"
+            f"Family: "
+            f"{analysis.get('family','')}"
         )
 
     tmp = tempfile.NamedTemporaryFile(
@@ -230,14 +258,20 @@ def create_portfolio_ppt(portfolio_id):
 
     base_url = request.host_url.rstrip("/")
 
+    if base_url.startswith("http://"):
+        base_url = base_url.replace(
+            "http://",
+            "https://",
+            1
+        )
+
     return {
         "success": True,
         "portfolio_id": portfolio_id,
-        "image_count": len(images),
+        "analysis_count": len(analyses),
         "download_url":
             f"{base_url}/download/{filename}"
     }
-
 
 @app.route("/download/<filename>")
 def download_file(filename):
