@@ -1,6 +1,8 @@
-from flask import Flask, request
+```python
+from flask import Flask, request, send_file
 from pptx import Presentation
 import tempfile
+import os
 
 app = Flask(__name__)
 
@@ -34,10 +36,29 @@ def create_ppt():
 
     prs.save(tmp.name)
 
+    filename = os.path.basename(tmp.name)
+
     return {
         "success": True,
-        "filename": tmp.name
+        "filename": filename,
+        "download_url": f"https://web-production-4163.up.railway.app/download/{filename}"
     }
+
+@app.route("/download/<filename>")
+def download_file(filename):
+
+    filepath = f"/tmp/{filename}"
+
+    if not os.path.exists(filepath):
+        return {"error": "file not found"}, 404
+
+    return send_file(
+        filepath,
+        as_attachment=True,
+        download_name=filename,
+        mimetype="application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    )
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
+```
