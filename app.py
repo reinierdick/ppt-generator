@@ -2,12 +2,74 @@ from flask import Flask, request, send_file
 from pptx import Presentation
 import tempfile
 import os
+import zipfile
+import uuid
 
 app = Flask(__name__)
 
+UPLOAD_DIR = "uploads"
+
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
 @app.route("/")
 def home():
-    return "PPT Generator Running"
+    return """
+    <h1>Portfolio Upload</h1>
+    <a href="/upload">Upload ZIP</a>
+    """
+
+@app.route("/upload")
+def upload_page():
+    return """
+    <h2>Upload Portfolio ZIP</h2>
+
+    <form action="/upload_zip" method="post" enctype="multipart/form-data">
+        <input type="file" name="zipfile">
+        <input type="submit" value="Upload">
+    </form>
+    """
+
+@app.route("/upload_zip", methods=["POST"])
+def upload_zip():
+
+    if "zipfile" not in request.files:
+        return {"error": "No file uploaded"}, 400
+
+    file = request.files["zipfile"]
+
+    portfolio_id = str(uuid.uuid4())
+
+    portfolio_folder = os.path.join(
+        UPLOAD_DIR,
+        portfolio_id
+    )
+
+    os.makedirs(portfolio_folder)
+
+    zip_path = os.path.join(
+        portfolio_folder,
+        "portfolio.zip"
+    )
+
+    file.save(zip_path)
+
+    with zipfile.ZipFile(zip_path, "r") as zip_ref:
+        zip_ref.extractall(portfolio_folder)
+
+    image_count = 0
+
+    for root, dirs, files in os.walk(portfolio_folder):
+        for f in files:
+            if f.lower().endswith(
+                (".jpg", ".jpeg", ".png", ".webp")
+            ):
+                image_count += 1
+
+    return {
+        "success": True,
+        "portfolio_id": portfolio_id,
+        "image_count": image_count
+    }
 
 @app.route("/create_ppt", methods=["POST"])
 def create_ppt():
@@ -62,3 +124,4 @@ def download_file(filename):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
+```
