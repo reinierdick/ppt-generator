@@ -1,8 +1,12 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, send_file
 from pptx import Presentation
-import uuid
+import tempfile
 
 app = Flask(__name__)
+
+@app.route("/")
+def home():
+    return "PPT Generator Running"
 
 @app.route("/create_ppt", methods=["POST"])
 def create_ppt():
@@ -23,18 +27,19 @@ def create_ppt():
             slide_data.get("bullets", [])
         )
 
-    filename = f"{uuid.uuid4()}.pptx"
+    tmp = tempfile.NamedTemporaryFile(
+        delete=False,
+        suffix=".pptx"
+    )
 
-    prs.save(filename)
+    prs.save(tmp.name)
 
-    return jsonify({
-        "message": "ppt created",
-        "filename": filename
-    })
-
-@app.route("/")
-def home():
-    return "PPT Generator Running"
+    return send_file(
+        tmp.name,
+        as_attachment=True,
+        download_name="presentation.pptx",
+        mimetype="application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    )
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
